@@ -11,7 +11,7 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(comp1 comp2 P PF);
 
-$VERSION = 0.11;
+$VERSION = 0.12;
 
 =head1 NAME
 

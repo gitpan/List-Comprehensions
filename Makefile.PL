@@ -6,8 +6,13 @@ use ExtUtils::MakeMaker;
 ) if $] ge '5.005';
 
 WriteMakefile(
-	VERSION_FROM => 'Comprehensions.pm',
 	NAME => 'List::Comprehensions',
+	VERSION_FROM => 'List/Comprehensions.pm',
+	PREREQ_PM => {
+					'Alias' => 0,
+					'Array::RefElem' => 0,
+					'PadWalker' => 0,
+				},
     @if5005
 );
 
