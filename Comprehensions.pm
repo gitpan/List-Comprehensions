@@ -2,11 +2,16 @@ package List::Comprehensions;
 use warnings;
 use Carp;
 
+# for comp2
+use Alias qw(attr);
+use Array::RefElem qw(av_push);
+use PadWalker qw(peek_my);
+
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(comp1 comp2 P PF);
 
-$VERSION = 0.1;
+$VERSION = 0.11;
 
 =head1 NAME
 
@@ -15,15 +20,28 @@ List::Comprehensions - allows for list comprehensions in Perl.
 =head1 SYNOPSIS
 
     use List::Comprehensions;
+    use warnings;
     
+    my @res = ();
+
     @res = comp1 { [ @_ ] } [0..4], [0..4], [0..4];
 
+    no warnings 'once';
     @res = comp2 { [$i, $j, $k] }
         i => [0..4],
         j => [0..4],
         k => [0..4];
 
-    # less efficient.. but, equivelant to
+    # if strict 'vars' is on, use lexicals. eg:
+    use strict 'vars';
+    
+    my ($i, $j, $k);
+    @res = comp2 { [$i, $j, $k] }
+        i => [0..4],
+        j => [0..4],
+        k => [0..4];
+    
+    # each being less efficient but equivelant to
 
     @res = ();
     for $i ( 0..4 ) {
@@ -164,9 +182,6 @@ sub comp1(&@) {
 	return @return;
 }
 
-use Alias qw(attr);
-use Array::RefElem qw(av_push);
-
 =item B<comp2(&@)>
 
 Named comprehensions
@@ -184,6 +199,9 @@ sub comp2(&@) {
 	my @aliases;
 	my %aliased;
 
+	my $their_lexicals = peek_my(1);
+	my %overridden_lexicals = ();
+
 	while( my $arg = shift @_ ) {
 		if( ref($arg) ) {
 			if( ref($arg) eq 'CODE' ) {
@@ -197,26 +215,42 @@ sub comp2(&@) {
 			else {
 				croak "expected ARRAY or CODE ref";
 			}
-		} else {
+		}
+		else {
 			if( ref($_[0]) eq 'ARRAY' ) {
-				push @aliases, $arg;
-				av_push(@args, $aliased{$aliases[-1]});
+				if( exists $their_lexicals->{"\$$arg"} ) {
+					my $value = $their_lexicals->{"\$$arg"};
+					$overridden_lexicals{"\$$arg"} = $$value;
+					av_push(@args, $$value);
+				}
+				else {
+					push @aliases, $arg;
+					av_push(@args, $aliased{$aliases[-1]});
+				}
+
 				$args[-1] = 0;
-				
 				push @sets, shift();
-			} else {
+			}
+			else {
 				croak "expected ARRAY or CODE ref";
 			}
 		}
 	}
 
 	my ($package) = caller ();
-	($Alias::AttrPrefix) = $package . "::";
+	$Alias::AttrPrefix = $package . "::";
 	
 	attr \%aliased;
 
 	local @return;
+	
 	run 0;
+	
+	# restore lexicals
+	while( my ($k, $v) = each %overridden_lexicals ) {
+		${$their_lexicals->{$k}} = $v;
+	}
+	
 	return @return;
 }
 
