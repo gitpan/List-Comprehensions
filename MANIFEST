@@ -1,4 +1,4 @@
-List/Comprehensions.pm
 MANIFEST			This list of files
 Makefile.PL
+lib/List/Comprehensions.pm
 t/test.t
